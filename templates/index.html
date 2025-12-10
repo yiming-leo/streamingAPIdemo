@@ -1,0 +1,73 @@
+<!--html ref: https://fastapi.tiangolo.com/advanced/websockets/#in-production-->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat</title>
+</head>
+<body>
+<h1>WebSocket Chat</h1>
+<form action="" onsubmit="websocketSender.send()">
+    <input type="text" id="messageText" autocomplete="off"/>
+    <button>Send</button>
+</form>
+<ul id='messages'>
+</ul>
+<script>
+    //define ws url
+    const WEBSOCKETURL = "ws://localhost:8000/ws"
+
+    // waiting for health checking
+    async function initializeEndpoint() {
+        try {
+            // get health check's result
+            const health_check_result = await fetch("/health_check")
+            const health_status = await health_check_result.json()
+            console.log(health_check_result)
+            if (health_status.status === "healthy") {
+                console.log("200, connecting websocket")
+                //healthy, continuously performing
+                connectWebsocket()
+            } else {
+                console.log("websocket not ready")
+            }
+        } catch (error) {
+            console.log("500, cannot get websocket endpoint")
+            // failed getting, retrying
+            setTimeout(initializeEndpoint, 3000)
+        }
+    }
+
+    // after health check, connect websocket
+    function connectWebsocket() {
+        var ws = new WebSocket(WEBSOCKETURL);
+        // message receive
+        ws.onmessage = function (event) {
+            var messages = document.getElementById('messages')
+            var message = document.createElement('li')
+            var content = document.createTextNode(event.data)
+            message.appendChild(content)
+            messages.appendChild(message)
+        }
+        // sendMessage by clicking
+        var sendMessage = function (event) {
+            var input = document.getElementById("messageText")
+            ws.send(input.value)
+            input.value = ''
+            event.preventDefault()
+        }
+        // get form's onsubmit
+        var form = document.querySelector("form")
+        if (form) {
+            form.onsubmit = sendMessage
+        }
+        // for form to use
+        return sendMessage
+    }
+
+    // load initializeEndpoint
+    window.addEventListener('load', initializeEndpoint);
+    // outside call, for form
+    var websocketSender = connectWebsocket();
+</script>
+</body>
+</html>
